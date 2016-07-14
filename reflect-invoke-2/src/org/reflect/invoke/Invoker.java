@@ -43,18 +43,11 @@ public class Invoker<T> {
 			InvocationTargetException,
 			NoSuchMethodException {
 		return invocable.call(target,
-				method -> method.getName().equals(name) && arguments == null
+				method -> method.getName().equals(name) && (arguments == null
 						? method.getParameters().length == 0
-						: method.getParameters().length == arguments.length,
-				parameters -> {
-					if (parameters.length == 0) {
-						return new Object[0];
-					}
-					Object[] rtn = new Object[arguments.length];
-					for (int i = 0; i < arguments.length; i++) {
-						rtn[i] = Cast.$(parameters[i].getType(), arguments[i]);
-					}
-					return rtn;
+						: method.getParameters().length == arguments.length),
+				(i, p) -> {
+					return Cast.$(p.getType(), arguments[i]);
 				});
 	}
 }

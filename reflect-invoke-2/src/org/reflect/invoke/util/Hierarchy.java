@@ -34,7 +34,8 @@ public class Hierarchy<T> implements Iterable<Class<? extends T>> {
 	private final Class<T> ceil;
 	private final boolean touch;
 
-	public Hierarchy(Class<? extends T> init, Class<T> ceil, boolean touch) {
+	public Hierarchy(Class<? extends T> init, Class<T> ceil, boolean touch)
+			throws NullPointerException, IllegalArgumentException {
 		if ((this.ceil = ceil) == null) {
 			if ((this.init = init) == null) {
 				throw new NullPointerException();
@@ -45,11 +46,12 @@ public class Hierarchy<T> implements Iterable<Class<? extends T>> {
 		this.touch = touch;
 	}
 
-	public Hierarchy(Class<? extends T> init, Class<T> ceil) {
-		this(init, ceil, true);
+	public Hierarchy(Class<? extends T> init, Class<T> ceil)
+			throws NullPointerException {
+		this(init, ceil, false);
 	}
 
-	public Hierarchy(Class<? extends T> clazz) {
+	public Hierarchy(Class<? extends T> clazz) throws NullPointerException {
 		this(clazz, null, false);
 	}
 

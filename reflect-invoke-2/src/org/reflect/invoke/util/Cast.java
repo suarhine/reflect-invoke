@@ -1,22 +1,22 @@
 package org.reflect.invoke.util;
 
 import java.lang.reflect.*;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Formatter;
-import java.util.Iterator;
+import java.util.*;
 
 public class Cast {
-
+	@FunctionalInterface
 	public interface Castable<T> {
 
 		public default boolean exclude(Class<?> type) {
 			return false;
 		}
 
+		public default boolean include(Class<?> type) {
+			return Generic.$(this, Castable.class, "T").isAssignableFrom(type);
+		}
+
 		public default boolean support(Class<?> type) {
-			return Generic.$(this, Castable.class, "T").isAssignableFrom(type)
-					&& !exclude(type);
+			return include(type) && !exclude(type);
 		}
 
 		public T cast(Class<?> type, Object value);
@@ -31,6 +31,25 @@ public class Cast {
 		}
 
 		private final ArrayList<Castable<?>> castable = new ArrayList<>();
+
+		public Custom() {
+			for (Class<?> hier : new Hierarchy<>(getClass(), Custom.class)) {
+				for (Class<?> clazz : hier.getDeclaredClasses()) {
+					if (Castable.class.isAssignableFrom(clazz)) {
+						try {
+							castable.add((Castable<?>) found(clazz));
+						} catch (Throwable e) {}
+					}
+				}
+			}
+		}
+
+		private Object found(Class<?> clazz)
+				throws InvocationTargetException, NoSuchMethodException {
+			return new Invocable<>(clazz).found(null, (i, p) -> {
+				return p.getType().isInstance(this) ? this : null;
+			});
+		}
 
 		public <T> T cast(Class<T> type, Object value) {
 			for (Castable<?> castable : castable) {
@@ -56,6 +75,10 @@ public class Cast {
 
 	public static <T> T $(Class<T> type, Object value) {
 		return $.cast(type, value);
+	}
+
+	public static <T> T $(Object value, T dfl) {
+		return value == null ? dfl : $.cast(value, dfl);
 	}
 
 	@SafeVarargs
@@ -113,7 +136,7 @@ public class Cast {
 		}
 	}
 
-	public <T> T[] array(Collection<T> value, Class<T> type)
+	public <T> T[] array(Class<T> type, Collection<T> value)
 			throws NullPointerException {
 		return value.toArray($(Array.newInstance(type, value.size())));
 	}
@@ -322,8 +345,7 @@ public class Cast {
 		}
 	}
 
-	public <T> T cast(Object value, T dfl)
-			throws NullPointerException {
+	public <T> T cast(Object value, T dfl) throws NullPointerException {
 		return cast(clazz(dfl), value, dfl);
 	}
 }

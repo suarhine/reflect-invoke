@@ -6,6 +6,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class Invocable<T> {
@@ -58,7 +59,7 @@ public class Invocable<T> {
 			NoSuchFieldException {
 		for (Class<? extends T> clazz : new Hierarchy<>(init, ceil, touch)) {
 			for (Field field : clazz.getDeclaredFields()) {
-				if (filter.apply(field)) {
+				if (filter == null || filter.apply(field)) {
 					try {
 						return Cast.$(override(field).get(target));
 					} catch (IllegalAccessException e) {}
@@ -77,7 +78,7 @@ public class Invocable<T> {
 			NoSuchFieldException {
 		for (Class<? extends T> clazz : new Hierarchy<>(init, ceil, touch)) {
 			for (Field field : clazz.getDeclaredFields()) {
-				if (filter.apply(field)) {
+				if (filter == null || filter.apply(field)) {
 					try {
 						override(field).set(target,
 								field.getType().cast(arguments.apply(field)));
@@ -90,7 +91,7 @@ public class Invocable<T> {
 
 	public <R> R call(T target,
 			Function<Method, Boolean> filter,
-			Function<Parameter[], Object[]> arguments)
+			BiFunction<Integer, Parameter, Object> arguments)
 			throws NullPointerException,
 			IllegalArgumentException,
 			ClassCastException,
@@ -98,10 +99,14 @@ public class Invocable<T> {
 			NoSuchMethodException {
 		for (Class<? extends T> clazz : new Hierarchy<>(init, ceil, touch)) {
 			for (Method method : clazz.getDeclaredMethods()) {
-				if (filter.apply(method)) {
+				if (filter == null || filter.apply(method)) {
 					try {
-						return Cast.$(override(method).invoke(target,
-								arguments.apply(method.getParameters())));
+						Parameter[] p = method.getParameters();
+						Object[] a = new Object[p.length];
+						for (int i = 0; i < a.length; i++) {
+							a[i] = arguments.apply(i, p[i]);
+						}
+						return Cast.$(override(method).invoke(target, a));
 					} catch (IllegalAccessException e) {}
 				}
 			}
@@ -110,17 +115,21 @@ public class Invocable<T> {
 	}
 
 	public T found(Function<Constructor<?>, Boolean> filter,
-			Function<Parameter[], Object[]> arguments)
+			BiFunction<Integer, Parameter, Object> arguments)
 			throws NullPointerException,
 			IllegalArgumentException,
 			ClassCastException,
 			InvocationTargetException,
 			NoSuchMethodException {
 		for (Constructor<?> constructor : init.getDeclaredConstructors()) {
-			if (filter.apply(constructor)) {
+			if (filter == null || filter.apply(constructor)) {
 				try {
-					return Cast.$(override(constructor).newInstance(
-							arguments.apply(constructor.getParameters())));
+					Parameter[] p = constructor.getParameters();
+					Object[] a = new Object[p.length];
+					for (int i = 0; i < a.length; i++) {
+						a[i] = arguments.apply(i, p[i]);
+					}
+					return Cast.$(override(constructor).newInstance(a));
 				} catch (RuntimeException e) {
 					throw e;
 				} catch (Throwable e) {}
